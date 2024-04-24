@@ -4,6 +4,8 @@ import org.json.JSONObject;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import okhttp3.OkHttpClient;
@@ -13,7 +15,9 @@ import okhttp3.Response;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import io.github.cdimascio.dotenv.Dotenv;
 
@@ -21,6 +25,8 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 	private final OkHttpClient client = new OkHttpClient();
 	private final Dotenv dotenv = Dotenv.load();
+	
+	List<JSONObject> songs = new ArrayList<>();
 	
     @Override
     public String getBotUsername() {
@@ -37,80 +43,105 @@ public class TelegramBot extends TelegramLongPollingBot {
     //we handle the received update and capture the text and id of the conversation
     @Override
     public void onUpdateReceived(Update update) {
-        String message = update.getMessage().getText();
-        Long chatId = update.getMessage().getChatId();
-        
-        // format "Artist - Song"
-        String[] messageArray = message.split(" - ", 2);
-        
-		if (messageArray.length != 2) {
-			sendMessage(generateSendMessage(chatId, "Invalid format. Please use \"Artist - Song\""));
-			return;
-		}
-        
-        String artist = messageArray[0];
-        String song = messageArray[1];
-        
-        // get lyrics with lyrics.ovh API
-        
-        Request requestOvh = new Request.Builder()
-				.url("https://api.lyrics.ovh/v1/" + URLEncoder.encode(artist, StandardCharsets.UTF_8) + "/"
-						+ URLEncoder.encode(song, StandardCharsets.UTF_8))
-				.build();
-		
-		try (Response response = client.newCall(requestOvh).execute()) {
-		    String responseBody = response.body().string();
-		    if (response.isSuccessful()) {
-		        // Parse the JSON response to get the lyrics
-		        JSONObject jsonResponse = new JSONObject(responseBody);
-		        String lyrics = jsonResponse.getString("lyrics");
+        if (update.hasMessage() && update.getMessage().hasText()) {
+            String message = update.getMessage().getText();
+            Long chatId = update.getMessage().getChatId();
+            
+            songs.clear();
 
-		        // Replace "\r\n" with "\n" to fix the formatting
-		        lyrics = lyrics.replace("\r\n", "\n");
-		        
-		        // Split the lyrics into lines
-		        String[] lines = lyrics.split("\n");
+            // Search for the song on Genius
+            String urlGenius = "https://api.genius.com/search?q=" + URLEncoder.encode(message, StandardCharsets.UTF_8);
+            Request requestGeniusOptions = new Request.Builder()
+                .url(urlGenius)
+                .addHeader("Authorization", "Bearer " + dotenv.get("GENIUS_ACCESS_TOKEN"))
+                .build();
 
-		        // Skip the first line and join the rest back together
-		        lyrics = String.join("\n", Arrays.copyOfRange(lines, 1, lines.length));
+            try (Response responseGenius = client.newCall(requestGeniusOptions).execute()) {
+                if (!responseGenius.isSuccessful()) throw new IOException("Unexpected code " + responseGenius);
 
-		        sendMessage(generateSendMessage(chatId, lyrics));
-		    } else {
-		        sendMessage(generateSendMessage(chatId, "\n\nLyrics not found"));
-		    }
-		} catch (IOException e) {
-		    e.printStackTrace();
-		}
+                JSONObject jsonObject = new JSONObject(responseGenius.body().string());
+                JSONObject response = jsonObject.getJSONObject("response");
+                if (response.getJSONArray("hits").length() == 0) {
+                    sendMessage(generateSendMessage(chatId, "No se encontraron resultados para " + message));
+                    return;
+                }
 
-		
-        // get lyrics
-        String url = "https://api.genius.com/search?q=" + URLEncoder.encode(artist + " " + song, StandardCharsets.UTF_8);
-        Request requestGenius = new Request.Builder()
-            .url(url)
-            .addHeader("Authorization", "Bearer " + dotenv.get("GENIUS_ACCESS_TOKEN")) // replace with your Genius access token
-            .build();
+                List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+                for (int i = 0; i < response.getJSONArray("hits").length(); i++) {
+                    JSONObject hit = response.getJSONArray("hits").getJSONObject(i).getJSONObject("result");
+                    songs.add(hit);
+                    InlineKeyboardButton button = new InlineKeyboardButton();
+                    button.setText(hit.getString("full_title"));
+                    button.setCallbackData(String.valueOf(i));  // Use the index as callback data
+                    List<InlineKeyboardButton> rowInline = new ArrayList<>();
+                    rowInline.add(button);
+                    keyboard.add(rowInline);
+                }
 
-        try (Response response = client.newCall(requestGenius).execute()) {
-            String responseBody = response.body().string();
-            if (response.isSuccessful()) {
-                // Parse the JSON response to get the song information
-                JSONObject jsonResponse = new JSONObject(responseBody);
-                JSONObject songInfo = jsonResponse.getJSONObject("response").getJSONArray("hits").getJSONObject(0).getJSONObject("result");
+                InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+                inlineKeyboardMarkup.setKeyboard(keyboard);
 
-                // Get the song title and artist name
-                String songTitle = songInfo.getString("title");
-                String songArtist = songInfo.getJSONObject("primary_artist").getString("name");
+                SendMessage messageOptions = new SendMessage();
+                messageOptions.setChatId(chatId.toString());
+                messageOptions.setText("Por favor, selecciona una opción:");
+                messageOptions.setReplyMarkup(inlineKeyboardMarkup);
 
-                // Get the song URL
-                String songUrl = songInfo.getString("url");
+                try {
+                    execute(messageOptions);
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
+                }
 
-                sendMessage(generateSendMessage(chatId, "Artist: " + songArtist + "\nSong: " + songTitle + "\n\n" + songUrl));
-            } else {
-                sendMessage(generateSendMessage(chatId, "\n\nSong not found"));
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+        
+        else if (update.hasCallbackQuery()) {
+        	
+        	//get info from genius API
+        	
+        	Integer index = Integer.parseInt(update.getCallbackQuery().getData());
+        	JSONObject song = songs.get(index);
+        	
+        	String title = song.getString("title");
+        	String artist = song.getJSONObject("primary_artist").getString("name");
+        	
+        	// get lyrics from Lyrics.ovh API
+        	
+        	String urlLyrics = "https://api.lyrics.ovh/v1/" + artist + "/" + title;
+        	
+			Request requestLyricsOptions = new Request.Builder().url(urlLyrics).build();
+
+			try (Response responseLyrics = client.newCall(requestLyricsOptions).execute()) {
+				if (!responseLyrics.isSuccessful())
+					throw new IOException("Unexpected code " + responseLyrics);
+
+				JSONObject jsonObject = new JSONObject(responseLyrics.body().string());
+				String lyrics = jsonObject.getString("lyrics");
+
+				SendMessage sendmessage = new SendMessage(update.getCallbackQuery().getMessage().getChatId().toString(),
+						"Title: " + title + "\nArtist: " + artist + "\n\n" + lyrics);
+				sendMessage(sendmessage);
+
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+        	
+        	// Send Genius's link
+			
+			String url = song.getString("url");
+			
+			SendMessage sendmessage = new SendMessage(update.getCallbackQuery().getMessage().getChatId().toString(), url);
+			
+			try {
+				execute(sendmessage);
+			} catch (TelegramApiException e) {
+				e.printStackTrace();
+			}
+
+		}
+
         
     }
 

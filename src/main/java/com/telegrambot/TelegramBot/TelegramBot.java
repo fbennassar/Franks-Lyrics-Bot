@@ -25,6 +25,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 	private final OkHttpClient client = new OkHttpClient();
 	private final Dotenv dotenv = Dotenv.load();
+	private WebScraper scraper = new WebScraper();
 	
 	List<JSONObject> songs = new ArrayList<>();
 	
@@ -43,7 +44,18 @@ public class TelegramBot extends TelegramLongPollingBot {
     //we handle the received update and capture the text and id of the conversation
     @Override
     public void onUpdateReceived(Update update) {
-        if (update.hasMessage() && update.getMessage().hasText()) {
+    	
+		if (update.hasMessage() && update.getMessage().hasText()
+				&& update.getMessage().getText().startsWith("/start")) {
+			String message = "Send me the name of a song and I will send you the lyrics!";
+			Long chatId = update.getMessage().getChatId();
+			SendMessage sendMessage = generateSendMessage(chatId, message);
+			sendMessage(sendMessage);
+		}
+
+		else
+    	
+        if (update.hasMessage() && update.getMessage().hasText() && !update.getMessage().getText().startsWith("/start")) {
             String message = update.getMessage().getText();
             Long chatId = update.getMessage().getChatId();
             
@@ -107,9 +119,26 @@ public class TelegramBot extends TelegramLongPollingBot {
         	String title = song.getString("title");
         	String artist = song.getJSONObject("primary_artist").getString("name");
         	
+        	// get info from WebScraper
+        	
+        	String url2 = song.getString("url");
+        	
+        	try {
+        		SongData songData = scraper.getSongData(url2);
+        		
+        		String lyrics = songData.getLyrics();
+        		
+        		SendMessage sendmessage = new SendMessage(update.getCallbackQuery().getMessage().getChatId().toString(),
+        				"Title: " + title + "\nArtist: " + artist + "\n\n" + lyrics);
+        		
+        		execute(sendmessage);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+        	
         	// get lyrics from Lyrics.ovh API
         	
-        	String urlLyrics = "https://api.lyrics.ovh/v1/" + artist + "/" + title;
+        	/* String urlLyrics = "https://api.lyrics.ovh/v1/" + artist + "/" + title;
         	
 			Request requestLyricsOptions = new Request.Builder().url(urlLyrics).build();
 
@@ -122,11 +151,11 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 				SendMessage sendmessage = new SendMessage(update.getCallbackQuery().getMessage().getChatId().toString(),
 						"Title: " + title + "\nArtist: " + artist + "\n\n" + lyrics);
-				sendMessage(sendmessage);
+				sendMessage(sendmessage); 
 
 			} catch (IOException e) {
 				e.printStackTrace();
-			}
+			} */
         	
         	// Send Genius's link
 			

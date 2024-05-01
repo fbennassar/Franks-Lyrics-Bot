@@ -21,6 +21,8 @@ public class App {
             port(Integer.parseInt(port));
         }
         
+        get("/hello", (req, res) -> "Hello World");  // Ruta básica
+        
         try {
             TelegramBotsApi chatBot = new TelegramBotsApi(DefaultBotSession.class);
             chatBot.registerBot(new TelegramBot());

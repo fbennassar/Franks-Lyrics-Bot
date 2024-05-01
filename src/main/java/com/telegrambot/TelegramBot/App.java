@@ -3,11 +3,18 @@ package com.telegrambot.TelegramBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+import static spark.Spark.*;
 
 
 
 public class App {
     public static void main(String[] args) {
+
+        String port = System.getenv("PORT");
+        if (port != null) {
+            port(Integer.parseInt(port));
+        }
+        
         try {
             TelegramBotsApi chatBot = new TelegramBotsApi(DefaultBotSession.class);
             chatBot.registerBot(new TelegramBot());

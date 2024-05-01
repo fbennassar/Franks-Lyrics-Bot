@@ -7,7 +7,6 @@ WORKDIR /app
 # Copia tu código fuente al contenedor
 COPY src /app/src
 COPY pom.xml /app
-COPY .env /app   # Asegúrate de que tu archivo .env está en la misma carpeta que tu Dockerfile
 
 # Construye la aplicación
 RUN mvn package

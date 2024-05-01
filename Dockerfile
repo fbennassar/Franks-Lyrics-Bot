@@ -21,6 +21,6 @@ WORKDIR /usr/app
 COPY --from=build /app/target/franks-lyrics.jar /usr/app/franks-lyrics.jar
 
 # Ejecuta tu bot
-CMD ["java", "-jar", "franks-lyrics.jar"]
+CMD ["java", "-jar", "franks-lyrics-jar-with-dependencies.jar"]
 
 

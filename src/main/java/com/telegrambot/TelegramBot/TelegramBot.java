@@ -24,7 +24,6 @@ import io.github.cdimascio.dotenv.Dotenv;
 public class TelegramBot extends TelegramLongPollingBot {
 
 	private final OkHttpClient client = new OkHttpClient();
-	private final Dotenv dotenv = Dotenv.load();
 	private WebScraper scraper = new WebScraper();
 	
 	List<JSONObject> songs = new ArrayList<>();
@@ -32,13 +31,13 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public String getBotUsername() {
         //username bot - Example :"@ChatBot"
-        return dotenv.get("BOT_USERNAME");
+        return System.getenv("BOT_USERNAME");
     }
 
     @Override
     public String getBotToken() {
         //token bot - Example "9999:abcdefghijklmnqzzz3a33"
-        return dotenv.get("BOT_TOKEN");
+        return System.getenv("BOT_TOKEN");
     }
 
     //we handle the received update and capture the text and id of the conversation
@@ -65,7 +64,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             String urlGenius = "https://api.genius.com/search?q=" + URLEncoder.encode(message, StandardCharsets.UTF_8);
             Request requestGeniusOptions = new Request.Builder()
                 .url(urlGenius)
-                .addHeader("Authorization", "Bearer " + dotenv.get("GENIUS_ACCESS_TOKEN"))
+                .addHeader("Authorization", "Bearer " + System.getenv("GENIUS_ACCESS_TOKEN"))
                 .build();
 
             try (Response responseGenius = client.newCall(requestGeniusOptions).execute()) {

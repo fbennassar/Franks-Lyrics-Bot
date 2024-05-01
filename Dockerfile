@@ -20,8 +20,5 @@ WORKDIR /usr/app
 # Copia el archivo JAR de la etapa de construcción
 COPY --from=build /app/target/franks-lyrics-jar-with-dependencies.jar /usr/app/franks-lyrics-jar-with-dependencies.jar
 
-# Copia el archivo .env de la etapa de construcción
-COPY --from=build /app/.env /usr/app/.env
-
 # Ejecuta tu bot
 CMD ["java", "-jar", "franks-lyrics-jar-with-dependencies.jar"]

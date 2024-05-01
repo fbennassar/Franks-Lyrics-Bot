@@ -9,6 +9,12 @@ import static spark.Spark.*;
 
 public class App {
     public static void main(String[] args) {
+    	
+        try {
+            Thread.sleep(5000);  // Espera 5 segundos antes de iniciar el servidor
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         String port = System.getenv("PORT");
         if (port != null) {

@@ -1,6 +1,7 @@
 package com.telegrambot.TelegramBot;
 
 import org.json.JSONObject;
+
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -21,12 +22,15 @@ import java.util.List;
 
 import io.github.cdimascio.dotenv.Dotenv;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class TelegramBot extends TelegramLongPollingBot {
 
 	private final OkHttpClient client = new OkHttpClient();
 	private WebScraper scraper = new WebScraper();
 	
-	List<JSONObject> songs = new ArrayList<>();
+	   Map<Long, List<JSONObject>> songs = new HashMap<>();
 	
     @Override
     public String getBotUsername() {
@@ -59,6 +63,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             Long chatId = update.getMessage().getChatId();
             
             songs.clear();
+            
+            songs.put(chatId, new ArrayList<>());
 
             // Search for the song on Genius
             String urlGenius = "https://api.genius.com/search?q=" + URLEncoder.encode(message, StandardCharsets.UTF_8);
@@ -80,7 +86,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
                 for (int i = 0; i < response.getJSONArray("hits").length(); i++) {
                     JSONObject hit = response.getJSONArray("hits").getJSONObject(i).getJSONObject("result");
-                    songs.add(hit);
+                    songs.get(chatId).add(hit);
                     InlineKeyboardButton button = new InlineKeyboardButton();
                     button.setText(hit.getString("full_title"));
                     button.setCallbackData(String.valueOf(i));  // Use the index as callback data
@@ -110,10 +116,12 @@ public class TelegramBot extends TelegramLongPollingBot {
         
         else if (update.hasCallbackQuery()) {
         	
+        	Long chatId = update.getCallbackQuery().getMessage().getChatId();
+        	
         	//get info from genius API
         	
         	Integer index = Integer.parseInt(update.getCallbackQuery().getData());
-        	JSONObject song = songs.get(index);
+        	JSONObject song = songs.get(chatId).get(index);
         	
         	String title = song.getString("title");
         	String artist = song.getJSONObject("primary_artist").getString("name");

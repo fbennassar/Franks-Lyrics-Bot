@@ -81,41 +81,28 @@
         <version>3.0.0-M5</version>
       </plugin>
 
-	    <plugin>
-    <artifactId>maven-assembly-plugin</artifactId>
-    <configuration>
-        <archive>
+<plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <archive>
             <manifest>
-                <mainClass>com.telegrambot.TelegramBot.App</mainClass>
+              <mainClass>com.telegrambot.TelegramBot.App</mainClass>
             </manifest>
-        </archive>
-        <descriptorRefs>
+          </archive>
+          <descriptorRefs>
             <descriptorRef>jar-with-dependencies</descriptorRef>
-        </descriptorRefs>
-    </configuration>
-    <executions>
-        <execution>
+          </descriptorRefs>
+        </configuration>
+        <executions>
+          <execution>
             <id>make-assembly</id>
             <phase>package</phase>
             <goals>
-                <goal>single</goal>
+              <goal>single</goal>
             </goals>
-        </execution>
-    </executions>
-</plugin>
-      
-      <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-jar-plugin</artifactId>
-            <version>3.1.0</version>
-            <configuration>
-                <archive>
-                    <manifest>
-                        <mainClass>com.telegrambot.TelegramBot.App</mainClass>
-                    </manifest>
-                </archive>
-            </configuration>
-        </plugin>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>

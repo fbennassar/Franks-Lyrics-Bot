@@ -16,7 +16,7 @@ public class App {
             e.printStackTrace();
         }
 
-        String port = System.getenv("PORT");
+        String port = System.getenv("WEBSITE_PORT");
         if (port != null) {
             port(Integer.parseInt(port));
         }
